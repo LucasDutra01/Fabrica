@@ -1,0 +1,1902 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Factory Idle Automation</title>
+    <style>
+      :root {
+        --bg-color: #e0e6ed;
+        --text-dark: #2d3748;
+        --panel-bg: rgba(255, 255, 255, 0.9);
+        --upgrade-bg: #4a5568;
+        --upgrade-hover: #2d3748;
+        --accent: #48bb78;
+        --danger: #e53e3e;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        user-select: none;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Interface de Utilizador (UI) */
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      /* Controlos (Canto Superior Esquerdo) */
+      .controls-panel {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        display: flex;
+        gap: 10px;
+        pointer-events: auto;
+      }
+
+      .icon-btn {
+        background: var(--panel-bg);
+        border: 2px solid #cbd5e0;
+        border-radius: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: bold;
+        color: var(--text-dark);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+      }
+
+      .icon-btn:hover {
+        background: #edf2f7;
+        transform: translateY(-2px);
+      }
+
+      .icon-btn:active {
+        transform: translateY(0);
+      }
+
+      /* Barra Superior */
+      .top-bar {
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--panel-bg);
+        padding: 10px 30px;
+        border-radius: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        gap: 25px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        pointer-events: auto;
+        border: 2px solid #cbd5e0;
+      }
+
+      .stat {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .money-text {
+        color: #2f855a;
+        font-size: 1.2rem;
+        font-weight: 700;
+        transition: color 0.3s;
+      }
+
+      .maint-text {
+        color: var(--danger);
+        font-size: 0.95rem;
+      }
+
+      /* Painel de Upgrades */
+      .upgrades-panel {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        pointer-events: auto;
+      }
+
+      .upgrade-btn {
+        background: var(--upgrade-bg);
+        color: white;
+        border: 2px solid #2d3748;
+        border-radius: 8px;
+        padding: 12px 20px;
+        cursor: pointer;
+        font-weight: 600;
+        text-align: left;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+        width: 280px;
+        box-shadow: 0 4px 0 #1a202c;
+      }
+
+      .upgrade-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 #1a202c;
+      }
+
+      .upgrade-btn:disabled {
+        filter: grayscale(100%);
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 4px 0 #1a202c;
+      }
+
+      .upgrade-name {
+        display: block;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        position: relative;
+        z-index: 2;
+      }
+
+      .upgrade-cost {
+        display: block;
+        color: #9ae6b4;
+        font-size: 0.85rem;
+        position: relative;
+        z-index: 2;
+      }
+
+      .upgrade-level {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.3);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        z-index: 2;
+      }
+
+      .btn-progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background: rgba(74, 144, 226, 0.4);
+        z-index: 1;
+        transition: width 0.3s ease;
+      }
+
+      /* Botão SELL */
+      .sell-container {
+        position: absolute;
+        bottom: 40px;
+        right: 50px;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .accumulated-text {
+        font-weight: bold;
+        color: var(--text-dark);
+        background: var(--panel-bg);
+        padding: 5px 15px;
+        border-radius: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .accumulated-val {
+        color: #2f855a;
+        font-size: 0.9rem;
+      }
+
+      .sell-btn {
+        background: #222;
+        color: white;
+        font-size: 3rem;
+        font-weight: 900;
+        letter-spacing: 2px;
+        padding: 30px 60px;
+        border: 5px solid #a1eff8;
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        cursor: pointer;
+        box-shadow:
+          0 0 20px rgba(161, 239, 248, 0.6),
+          inset 0 0 10px rgba(255, 255, 255, 0.2);
+        text-shadow: 2px 2px 0 #000;
+        transition: all 0.2s ease;
+        transform: rotate(-5deg);
+      }
+
+      .sell-btn:hover {
+        transform: rotate(-2deg) scale(1.05);
+        box-shadow:
+          0 0 30px rgba(161, 239, 248, 0.8),
+          inset 0 0 15px rgba(255, 255, 255, 0.3);
+        background: #2a2a2a;
+      }
+
+      .sell-btn:active {
+        transform: rotate(-5deg) scale(0.95);
+      }
+
+      /* Overlay de Pause, Reiniciar & Game Over */
+      .overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+      }
+
+      #pause-overlay {
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        font-size: 4rem;
+        font-weight: 900;
+        letter-spacing: 5px;
+        text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+      }
+
+      #game-over-overlay,
+      #restart-overlay {
+        background: rgba(0, 0, 0, 0.75);
+        pointer-events: auto;
+      }
+
+      #game-over-overlay {
+        background: rgba(100, 0, 0, 0.85);
+      }
+
+      .modal-box {
+        background: #2d3748;
+        padding: 40px 50px;
+        border-radius: 20px;
+        text-align: center;
+        border: 4px solid #cbd5e0;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        color: white;
+      }
+
+      .game-over-box {
+        border-color: var(--danger);
+      }
+
+      .modal-box h1 {
+        font-size: 3.5rem;
+        color: #fc8181;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+      }
+
+      .modal-box h2 {
+        font-size: 2.5rem;
+        color: #fbd38d;
+        margin-bottom: 15px;
+      }
+
+      .modal-box p {
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+        color: #cbd5e0;
+      }
+
+      .modal-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        padding: 15px 30px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: var(--danger);
+        color: white;
+        box-shadow: 0 4px 0 #9b2c2c;
+      }
+
+      .btn-primary:hover {
+        background: #c53030;
+        transform: translateY(2px);
+        box-shadow: 0 2px 0 #9b2c2c;
+      }
+
+      .btn-secondary {
+        background: #718096;
+        color: white;
+        box-shadow: 0 4px 0 #4a5568;
+      }
+
+      .btn-secondary:hover {
+        background: #a0aec0;
+        transform: translateY(2px);
+        box-shadow: 0 2px 0 #4a5568;
+      }
+
+      .floating-text {
+        position: absolute;
+        color: #48bb78;
+        font-weight: bold;
+        font-size: 1.5rem;
+        pointer-events: none;
+        animation: floatUp 1s ease-out forwards;
+        text-shadow:
+          1px 1px 0 #fff,
+          -1px -1px 0 #fff,
+          1px -1px 0 #fff,
+          -1px 1px 0 #fff;
+        z-index: 5;
+      }
+
+      @keyframes floatUp {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-50px) scale(1.2);
+        }
+      }
+
+      /* --------------------------------- */
+      /* MENU PRINCIPAL & TUTORIAL ESTILOS */
+      /* --------------------------------- */
+      #main-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #e0e6ed, #cbd5e0);
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+      #main-menu h1 {
+        font-size: 5rem;
+        color: #2d3748;
+        margin-bottom: 10px;
+        text-shadow: 4px 4px 0px white;
+        font-weight: 900;
+        letter-spacing: 2px;
+      }
+      #main-menu p {
+        font-size: 1.5rem;
+        color: #4a5568;
+        margin-bottom: 50px;
+        max-width: 600px;
+        padding: 0 20px;
+      }
+      .menu-btn {
+        font-size: 1.5rem;
+        padding: 20px 50px;
+        margin-bottom: 20px;
+        border-radius: 50px;
+        border: 4px solid white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        color: white;
+        min-width: 350px;
+      }
+      .btn-new {
+        background: var(--accent);
+        box-shadow: 0 8px 0 #2f855a;
+      }
+      .btn-new:hover {
+        background: #68d391;
+        transform: translateY(4px);
+        box-shadow: 0 4px 0 #2f855a;
+      }
+      .btn-cont {
+        background: #4a5568;
+        box-shadow: 0 8px 0 #2d3748;
+      }
+      .btn-cont:hover {
+        background: #718096;
+        transform: translateY(4px);
+        box-shadow: 0 4px 0 #2d3748;
+      }
+
+      #tutorial-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 90;
+        display: none;
+      }
+      #tutorial-dialog {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--panel-bg);
+        border: 4px solid var(--accent);
+        border-radius: 15px;
+        padding: 30px;
+        width: 90%;
+        max-width: 450px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        z-index: 1001;
+        display: none;
+      }
+      #tut-title {
+        color: var(--text-dark);
+        margin-bottom: 15px;
+        font-size: 2rem;
+      }
+      #tut-text {
+        color: #4a5568;
+        margin-bottom: 25px;
+        line-height: 1.6;
+        font-size: 1.1rem;
+      }
+
+      .tutorial-highlight {
+        z-index: 100 !important;
+        pointer-events: none !important;
+      }
+      .tutorial-highlight::after {
+        content: "";
+        position: absolute;
+        top: -15px;
+        left: -15px;
+        right: -15px;
+        bottom: -15px;
+        border: 4px dashed white;
+        border-radius: 25px;
+        animation: pulseBorder 1.5s infinite;
+        pointer-events: none;
+      }
+      @keyframes pulseBorder {
+        0% {
+          opacity: 0.5;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.02);
+        }
+        100% {
+          opacity: 0.5;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+      <!-- Painel de Controlos -->
+      <div class="controls-panel">
+        <button class="icon-btn" id="btn-pause" onclick="game.togglePause()">
+          ⏸️ Pausa
+        </button>
+        <button class="icon-btn" id="btn-audio" onclick="audio.toggle()">
+          🔇 Som: OFF
+        </button>
+        <button class="icon-btn" onclick="game.saveGame()">💾 Guardar</button>
+        <button class="icon-btn" onclick="game.promptRestart()">
+          🔄 Reiniciar
+        </button>
+      </div>
+
+      <!-- Barra Superior -->
+      <div class="top-bar" id="ui-top-bar">
+        <div class="stat">
+          💰 <span class="money-text" id="money-display">R$ 50</span>
+        </div>
+        <div class="stat">
+          ⚡ Manutenção:
+          <span class="maint-text" id="maint-display">-R$ 0/s</span>
+        </div>
+        <div class="stat">Spawns: <span id="spawn-display">1.0/s</span></div>
+        <div class="stat">Garras: <span id="claws-display">1</span></div>
+        <div class="stat">Vendido: <span id="sold-display">0</span></div>
+      </div>
+
+      <!-- Upgrades -->
+      <div class="upgrades-panel" id="ui-upgrades">
+        <button
+          class="upgrade-btn"
+          id="btn-upg-belt"
+          onclick="game.buyUpgrade('beltSpeed')"
+        >
+          <div class="btn-progress" id="prog-belt" style="width: 10%"></div>
+          <span class="upgrade-name">Velocidade da Esteira</span>
+          <span class="upgrade-cost" id="cost-belt">R$ 50</span>
+          <span class="upgrade-level" id="lvl-belt">Lv 1</span>
+        </button>
+        <button
+          class="upgrade-btn"
+          id="btn-upg-claw"
+          onclick="game.buyUpgrade('clawSpeed')"
+        >
+          <div class="btn-progress" id="prog-claw" style="width: 10%"></div>
+          <span class="upgrade-name">Velocidade da Garra</span>
+          <span class="upgrade-cost" id="cost-claw">R$ 75</span>
+          <span class="upgrade-level" id="lvl-claw">Lv 1</span>
+        </button>
+        <button
+          class="upgrade-btn"
+          id="btn-upg-clawCount"
+          onclick="game.buyUpgrade('clawCount')"
+        >
+          <div
+            class="btn-progress"
+            id="prog-clawCount"
+            style="width: 10%"
+          ></div>
+          <span class="upgrade-name">Adicionar Garra (+1)</span>
+          <span class="upgrade-cost" id="cost-clawCount">R$ 300</span>
+          <span class="upgrade-level" id="lvl-clawCount">Lv 1</span>
+        </button>
+        <button
+          class="upgrade-btn"
+          id="btn-upg-spawn"
+          onclick="game.buyUpgrade('spawnRate')"
+        >
+          <div class="btn-progress" id="prog-spawn" style="width: 10%"></div>
+          <span class="upgrade-name">Taxa de Produção</span>
+          <span class="upgrade-cost" id="cost-spawn">R$ 100</span>
+          <span class="upgrade-level" id="lvl-spawn">Lv 1</span>
+        </button>
+      </div>
+
+      <!-- Área de Venda -->
+      <div class="sell-container" id="ui-sell">
+        <div class="accumulated-text">
+          Stock: <span id="accumulated-display">0</span><br />
+          <span class="accumulated-val"
+            >Valor: R$ <span id="accumulated-val-display">0</span></span
+          >
+        </div>
+        <button class="sell-btn" onclick="game.sellItems()">SELL</button>
+      </div>
+
+      <!-- Overlays -->
+      <div id="pause-overlay" class="overlay">PAUSA</div>
+
+      <div id="game-over-overlay" class="overlay">
+        <div class="modal-box game-over-box">
+          <h1>FALÊNCIA!</h1>
+          <p>Gastou mais do que produziu e o banco penhorou a fábrica.</p>
+          <p>
+            <strong>Dica:</strong> Venda os itens frequentemente e não faça
+            upgrades que não consegue sustentar!
+          </p>
+          <button class="btn-primary" onclick="game.restartGame()">
+            Voltar ao Menu
+          </button>
+        </div>
+      </div>
+
+      <div id="restart-overlay" class="overlay">
+        <div class="modal-box">
+          <h2>Recomeçar do Zero?</h2>
+          <p>
+            Vai perder todo o seu progresso e dinheiro atual. Tem a certeza?
+          </p>
+          <div class="modal-buttons">
+            <button class="btn-secondary" onclick="game.cancelRestart()">
+              Cancelar
+            </button>
+            <button class="btn-primary" onclick="game.confirmRestart()">
+              Sim, Recomeçar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interface do Tutorial -->
+    <div id="tutorial-backdrop"></div>
+    <div id="tutorial-dialog">
+      <h2 id="tut-title">Bem-vindo!</h2>
+      <p id="tut-text">Texto do tutorial aqui.</p>
+      <button
+        class="btn-primary"
+        onclick="game.nextTutorialStep()"
+        style="border-radius: 50px"
+      >
+        Avançar ➔
+      </button>
+    </div>
+
+    <!-- Menu Principal -->
+    <div id="main-menu">
+      <h1>🏭 Factory Idle</h1>
+      <p>
+        Produza recursos, otimize suas máquinas e fuja da falência neste
+        simulador de linha de produção!
+      </p>
+      <button class="menu-btn btn-new" onclick="game.startNewGame()">
+        Novo Jogo (Tutorial)
+      </button>
+      <button
+        class="menu-btn btn-cont"
+        id="btn-continue"
+        style="display: none"
+        onclick="game.continueGame()"
+      >
+        Continuar Jogo
+      </button>
+    </div>
+
+    <script>
+      /**
+       * SISTEMA DE ÁUDIO (Web Audio API Sintetizador)
+       */
+      class AudioSystem {
+        constructor() {
+          this.enabled = false;
+          this.ctx = null;
+
+          this.bgm = new Audio("/audio/verdant_echoes.mp3");
+          this.bgm.loop = true;
+          this.bgm.volume = 0.3;
+        }
+
+        init() {
+          if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (this.ctx.state === "suspended") {
+            this.ctx.resume();
+          }
+        }
+
+        toggle() {
+          this.enabled = !this.enabled;
+          const btn = document.getElementById("btn-audio");
+          btn.innerText = this.enabled ? "🔊 Som: ON" : "🔇 Som: OFF";
+          if (this.enabled) {
+            this.init();
+            this.bgm
+              .play()
+              .catch((e) => console.log("Áudio bloqueado pelo navegador:", e));
+          } else {
+            this.bgm.pause();
+          }
+        }
+
+        playTone(freq, type, duration, vol = 0.1, slideFreq = null) {
+          if (!this.enabled || !this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          if (slideFreq) {
+            osc.frequency.exponentialRampToValueAtTime(
+              slideFreq,
+              this.ctx.currentTime + duration,
+            );
+          }
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            this.ctx.currentTime + duration,
+          );
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        }
+
+        playSpark() {
+          this.playTone(150, "sawtooth", 0.1, 0.05, 50);
+        }
+
+        playClawGrab() {
+          this.playTone(400, "square", 0.1, 0.02);
+        }
+
+        playClawDrop() {
+          this.playTone(200, "square", 0.1, 0.02);
+        }
+
+        playSell() {
+          this.playTone(900, "sine", 0.1, 0.1, 1200);
+          setTimeout(() => this.playTone(1200, "sine", 0.2, 0.1, 1600), 100);
+        }
+
+        playRepair() {
+          this.playTone(600, "sine", 0.1, 0.1, 1000);
+          setTimeout(() => this.playTone(800, "sine", 0.15, 0.1, 1200), 100);
+        }
+
+        playError() {
+          this.playTone(150, "sawtooth", 0.2, 0.1);
+        }
+
+        playGameOver() {
+          this.bgm.pause();
+          this.bgm.currentTime = 0;
+
+          this.playTone(200, "sawtooth", 1.0, 0.1, 50);
+          setTimeout(() => this.playTone(150, "sawtooth", 1.5, 0.1, 30), 500);
+        }
+      }
+      const audio = new AudioSystem();
+
+      /**
+       * ENGINE DO JOGO E CLASSES
+       */
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      const CONFIG = {
+        itemSize: 30,
+        beltWidth: 60,
+        rawMaterialCost: 2,
+        bankruptcyLimit: -500,
+        repairCost: 30,
+        breakChance: 0.015,
+      };
+
+      const ORE_TYPES = [
+        { chance: 0.05, colorRaw: "#D69E2E", colorProc: "#F6E05E", value: 250 },
+        { chance: 0.2, colorRaw: "#718096", colorProc: "#E2E8F0", value: 50 },
+        { chance: 1.0, colorRaw: "#222222", colorProc: "#E63946", value: 10 },
+      ];
+
+      class ConveyorBelt {
+        constructor(startX, startY, endX, endY) {
+          this.startX = startX;
+          this.startY = startY;
+          this.endX = endX;
+          this.endY = endY;
+          this.progress = 0;
+
+          const dx = endX - startX;
+          const dy = endY - startY;
+          this.length = Math.sqrt(dx * dx + dy * dy);
+          this.angle = Math.atan2(dy, dx);
+        }
+
+        draw(ctx, speed, dt) {
+          this.progress += speed * dt;
+          if (this.progress > 40) this.progress = 0;
+
+          ctx.save();
+          ctx.translate(this.startX, this.startY);
+          ctx.rotate(this.angle);
+
+          ctx.lineCap = "round";
+          ctx.lineWidth = CONFIG.beltWidth;
+          ctx.strokeStyle = "#2D4A66";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(this.length, 0);
+          ctx.stroke();
+
+          ctx.lineWidth = CONFIG.beltWidth - 8;
+          ctx.strokeStyle = "#81C0EB";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(this.length, 0);
+          ctx.stroke();
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(this.length, 0);
+          ctx.lineWidth = CONFIG.beltWidth - 8;
+          ctx.stroke();
+          ctx.clip();
+
+          ctx.lineWidth = 15;
+          ctx.strokeStyle = "#5FA8D4";
+          ctx.setLineDash([20, 20]);
+          ctx.lineDashOffset = -this.progress;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(this.length, 0);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.fillStyle = "#4A5568";
+          ctx.beginPath();
+          ctx.arc(0, 0, CONFIG.beltWidth / 2 - 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(this.length, 0, CONFIG.beltWidth / 2 - 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      class Item {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.state = "BELT_1";
+          this.processed = false;
+          this.targeted = false;
+
+          let roll = Math.random();
+          let accumulatedChance = 0;
+          for (let type of ORE_TYPES) {
+            accumulatedChance += type.chance;
+            if (roll <= accumulatedChance) {
+              this.oreData = type;
+              break;
+            }
+          }
+          this.color = this.oreData.colorRaw;
+          this.value = this.oreData.value;
+        }
+
+        draw(ctx) {
+          if (this.state === "ACCUMULATED") return;
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+
+          ctx.shadowColor = "rgba(0,0,0,0.3)";
+          ctx.shadowBlur = 5;
+          ctx.shadowOffsetY = 3;
+
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.roundRect(
+            -CONFIG.itemSize / 2,
+            -CONFIG.itemSize / 2,
+            CONFIG.itemSize,
+            CONFIG.itemSize,
+            4,
+          );
+          ctx.fill();
+
+          ctx.shadowColor = "transparent";
+          ctx.fillStyle = "rgba(255,255,255,0.25)";
+          ctx.beginPath();
+          ctx.roundRect(
+            -CONFIG.itemSize / 2,
+            -CONFIG.itemSize / 2,
+            CONFIG.itemSize,
+            CONFIG.itemSize / 2,
+            [4, 4, 0, 0],
+          );
+          ctx.fill();
+
+          if (this.value > 10 && this.processed) {
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.beginPath();
+            ctx.arc(
+              -CONFIG.itemSize / 4,
+              -CONFIG.itemSize / 4,
+              3,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+      }
+
+      class Smoke {
+        constructor(x, y, isToxic = false) {
+          this.x = x + (Math.random() - 0.5) * 10;
+          this.y = y;
+          this.vx = (Math.random() - 0.5) * 15;
+          this.vy = -20 - Math.random() * 30;
+          this.life = 1.0;
+          this.size = 5 + Math.random() * 10;
+          this.isToxic = isToxic;
+        }
+        update(dt) {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+          this.size += dt * 15;
+          this.life -= dt * 0.5;
+        }
+        draw(ctx) {
+          if (this.life <= 0) return;
+          ctx.globalAlpha = this.life * 0.5;
+          ctx.fillStyle = this.isToxic ? "#1A202C" : "#718096";
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      class Spark {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.vx = (Math.random() - 0.5) * 200;
+          this.vy = (Math.random() - 0.5) * 200 - 50;
+          this.life = 1.0;
+          this.color = ["#F6E05E", "#DD6B20", "#E53E3E"][
+            Math.floor(Math.random() * 3)
+          ];
+        }
+        update(dt) {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+          this.vy += 400 * dt;
+          this.life -= dt * 2;
+        }
+        draw(ctx) {
+          if (this.life <= 0) return;
+          ctx.globalAlpha = this.life;
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      class Claw {
+        constructor(baseX, baseY) {
+          this.baseX = baseX;
+          this.baseY = baseY;
+          this.headX = baseX;
+          this.headY = baseY + 50;
+
+          this.state = "IDLE";
+          this.targetItem = null;
+          this.timer = 0;
+          this.pincerOpen = true;
+          this.isBroken = false;
+        }
+
+        update(dt, gameInfo) {
+          if (this.isBroken) return;
+
+          const speed = gameInfo.speed;
+          const belt1EndX = gameInfo.belt1EndX;
+          const belt1Y = gameInfo.belt1Y;
+          const belt2StartX = gameInfo.belt2StartX;
+          const belt2Y = gameInfo.belt2Y;
+
+          const moveHead = (targetX, targetY) => {
+            let dx = targetX - this.headX;
+            let dy = targetY - this.headY;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < speed * dt) {
+              this.headX = targetX;
+              this.headY = targetY;
+              return true;
+            } else {
+              this.headX += (dx / dist) * speed * dt;
+              this.headY += (dy / dist) * speed * dt;
+              return false;
+            }
+          };
+
+          switch (this.state) {
+            case "IDLE":
+              this.pincerOpen = true;
+              let item = gameInfo.items.find(
+                (i) => i.state === "WAITING" && !i.targeted,
+              );
+              if (item) {
+                item.targeted = true;
+                this.targetItem = item;
+                this.state = "DESCENDING";
+              } else {
+                moveHead(belt1EndX - 20, belt1Y - 100);
+              }
+              break;
+
+            case "DESCENDING":
+              if (
+                moveHead(
+                  this.targetItem.x,
+                  this.targetItem.y - CONFIG.itemSize / 2,
+                )
+              ) {
+                this.state = "GRABBING";
+                this.timer = 0;
+                audio.playClawGrab();
+              }
+              break;
+
+            case "GRABBING":
+              this.pincerOpen = false;
+              this.timer += dt;
+              if (this.timer > 0.15) {
+                this.targetItem.state = "IN_CLAW";
+                this.state = "MOVING_TO_B2";
+                if (Math.random() < gameInfo.breakChance) this.isBroken = true;
+              }
+              break;
+
+            case "MOVING_TO_B2":
+              this.targetItem.x = this.headX;
+              this.targetItem.y = this.headY + CONFIG.itemSize / 2;
+
+              if (
+                moveHead(belt2StartX + 20, belt2Y - CONFIG.itemSize / 2 - 10)
+              ) {
+                this.state = "RELEASING";
+                this.timer = 0;
+                audio.playClawDrop();
+              }
+              break;
+
+            case "RELEASING":
+              this.pincerOpen = true;
+              this.timer += dt;
+              if (this.timer > 0.15) {
+                this.targetItem.state = "BELT_2";
+                this.targetItem.y = belt2Y;
+                this.targetItem = null;
+                this.state = "RETURNING";
+              }
+              break;
+
+            case "RETURNING":
+              if (moveHead(belt1EndX - 20, belt1Y - 100)) {
+                this.state = "IDLE";
+              }
+              break;
+          }
+        }
+
+        draw(ctx) {
+          let midX = (this.baseX + this.headX) / 2 + 60;
+          let midY = (this.baseY + this.headY) / 2 - 40;
+
+          ctx.save();
+          ctx.fillStyle = this.isBroken ? "#718096" : "#48BB78";
+          ctx.fillRect(this.baseX - 15, this.baseY - 10, 30, 20);
+
+          ctx.lineWidth = 10;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = this.isBroken ? "#A0AEC0" : "#68D391";
+
+          ctx.beginPath();
+          ctx.moveTo(this.baseX, this.baseY);
+          ctx.lineTo(midX, midY);
+          ctx.lineTo(this.headX, this.headY - 10);
+          ctx.stroke();
+
+          ctx.fillStyle = "#2D3748";
+          ctx.beginPath();
+          ctx.arc(this.baseX, this.baseY, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(midX, midY, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(this.headX, this.headY - 10, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.translate(this.headX, this.headY);
+          ctx.fillStyle = this.isBroken ? "#718096" : "#48BB78";
+          ctx.fillRect(-15, -15, 30, 10);
+
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = "#2D3748";
+          let pincerAngle = this.pincerOpen ? 0.4 : 0.1;
+
+          ctx.save();
+          ctx.translate(-10, -5);
+          ctx.rotate(pincerAngle);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, 25);
+          ctx.lineTo(10, 30);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.save();
+          ctx.translate(10, -5);
+          ctx.rotate(-pincerAngle);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, 25);
+          ctx.lineTo(-10, 30);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.restore();
+        }
+      }
+
+      class GameManager {
+        constructor() {
+          this.resetState();
+
+          this.isPaused = true;
+          this.isGameOver = false;
+          this.wasPausedBeforePrompt = false;
+          this.isTutorialActive = false;
+          this.tutorialStep = 0;
+
+          this.initLayout();
+          this.updateUI();
+          this.setupInteraction();
+
+          // Trata a tela de Menu Inicial se tiver um Save
+          if (localStorage.getItem("factoryIdleSave")) {
+            document.getElementById("btn-continue").style.display =
+              "inline-block";
+          }
+
+          setInterval(() => {
+            if (!this.isGameOver && !this.isPaused && !this.isTutorialActive)
+              this.saveGame(true);
+          }, 5000);
+
+          requestAnimationFrame((t) => this.loop(t));
+        }
+
+        resetState() {
+          this.state = {
+            money: 50,
+            accumulatedCount: 0,
+            accumulatedValue: 0,
+            totalSold: 0,
+            beltSpeed: 120,
+            spawnRate: 2000,
+            clawSpeed: 300,
+            clawsCount: 1,
+          };
+
+          this.upgrades = {
+            beltSpeed: {
+              level: 1,
+              baseCost: 50,
+              mult: 1.5,
+              name: "Velocidade da Esteira",
+              elId: "belt",
+            },
+            clawSpeed: {
+              level: 1,
+              baseCost: 75,
+              mult: 1.5,
+              name: "Velocidade da Garra",
+              elId: "claw",
+            },
+            clawCount: {
+              level: 1,
+              baseCost: 300,
+              mult: 2.5,
+              name: "Adicionar Garra (+1)",
+              elId: "clawCount",
+            },
+            spawnRate: {
+              level: 1,
+              baseCost: 100,
+              mult: 1.6,
+              name: "Taxa de Produção",
+              elId: "spawn",
+            },
+          };
+
+          this.processorBroken = false;
+          this.items = [];
+          this.sparks = [];
+          this.smokes = [];
+          this.claws = [];
+          this.lastTime = 0;
+          this.spawnTimer = 0;
+          this.smokeTimer = 0;
+          this.maintenanceTimer = 0;
+        }
+
+        setupInteraction() {
+          canvas.addEventListener("mousedown", (e) => {
+            if (this.isPaused || this.isGameOver || this.isTutorialActive)
+              return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            this.handleRepairClick(mouseX, mouseY);
+          });
+
+          canvas.addEventListener("mousemove", (e) => {
+            if (this.isPaused || this.isGameOver || this.isTutorialActive) {
+              canvas.style.cursor = "default";
+              return;
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            let hovering = false;
+
+            const repairRadius = 30;
+
+            if (
+              this.processorBroken &&
+              Math.hypot(x - this.processorX, y - (this.belt1Y - 60)) <
+                repairRadius
+            ) {
+              hovering = true;
+            }
+            for (let c of this.claws) {
+              if (
+                c.isBroken &&
+                Math.hypot(x - c.baseX, y - (c.baseY - 40)) < repairRadius
+              ) {
+                hovering = true;
+              }
+            }
+
+            canvas.style.cursor = hovering ? "pointer" : "default";
+          });
+        }
+
+        handleRepairClick(x, y) {
+          const repairRadius = 30;
+          const cost = CONFIG.repairCost;
+
+          if (this.processorBroken) {
+            const px = this.processorX;
+            const py = this.belt1Y - 60;
+            if (Math.hypot(x - px, y - py) < repairRadius) {
+              if (this.state.money >= cost) {
+                this.state.money -= cost;
+                this.processorBroken = false;
+                audio.playRepair();
+                this.createFloatingText(`- R$ ${cost}`, px, py, true);
+                this.updateUI();
+              } else {
+                audio.playError();
+                this.createFloatingText("Sem Dinheiro!", px, py, true);
+              }
+              return;
+            }
+          }
+
+          for (let claw of this.claws) {
+            if (claw.isBroken) {
+              const cx = claw.baseX;
+              const cy = claw.baseY - 40;
+              if (Math.hypot(x - cx, y - cy) < repairRadius) {
+                if (this.state.money >= cost) {
+                  this.state.money -= cost;
+                  claw.isBroken = false;
+                  audio.playRepair();
+                  this.createFloatingText(`- R$ ${cost}`, cx, cy, true);
+                  this.updateUI();
+                } else {
+                  audio.playError();
+                  this.createFloatingText("Sem Dinheiro!", cx, cy, true);
+                }
+                return;
+              }
+            }
+          }
+        }
+
+        // ------------------------------------
+        // GESTÃO DE MENUS E TUTORIAIS
+        // ------------------------------------
+
+        startNewGame() {
+          localStorage.removeItem("factoryIdleSave");
+          this.resetState();
+          this.initLayout();
+          this.updateUI();
+          document.getElementById("main-menu").style.display = "none";
+
+          if (!audio.ctx) audio.init();
+
+          this.isTutorialActive = true;
+          this.tutorialStep = 0;
+          this.showTutorialStep();
+        }
+
+        continueGame() {
+          this.loadGame();
+          this.initLayout();
+          this.updateUI();
+          document.getElementById("main-menu").style.display = "none";
+
+          if (!audio.ctx) audio.init();
+
+          this.isPaused = false;
+          this.lastTime = performance.now();
+        }
+
+        showTutorialStep() {
+          const steps = [
+            {
+              title: "Bem-vindo à Fábrica! 🏭",
+              text: "O seu objetivo é processar matérias-primas, vender e crescer sem ir à falência. Vamos entender como funciona a tela.",
+              elementId: null,
+            },
+            {
+              title: "As Finanças 💰",
+              text: "Na barra superior, acompanhe o seu Saldo e o custo de Manutenção por segundo. Se o dinheiro cair abaixo de R$ -500, você perde o jogo!",
+              elementId: "ui-top-bar",
+            },
+            {
+              title: "Venda para Lucrar! 📦",
+              text: "Os itens caem no final da esteira de baixo. Lembre-se de clicar neste botão gigante 'SELL' frequentemente para transformá-los em dinheiro vivo.",
+              elementId: "ui-sell",
+            },
+            {
+              title: "Expanda a Produção 📈",
+              text: "Use o lucro para comprar melhorias. Atenção: máquinas mais rápidas = mais custos de energia e maior Manutenção por segundo!",
+              elementId: "ui-upgrades",
+            },
+            {
+              title: "Evite Quebras! ⚙️",
+              text: "Com o tempo, as máquinas vão quebrar e soltar fumaça. Um ícone de engrenagem vermelha aparecerá nelas. Clique nele rápido para pagar o conserto.",
+              elementId: null,
+            },
+            {
+              title: "Tudo Pronto! 🚀",
+              text: "O jogo começará agora e a esteira vai rodar assim que fechar este aviso. Administre bem a sua nova fábrica e boa sorte!",
+              elementId: null,
+            },
+          ];
+
+          const step = steps[this.tutorialStep];
+          document.getElementById("tutorial-backdrop").style.display = "block";
+          document.getElementById("tutorial-dialog").style.display = "block";
+
+          document.getElementById("tut-title").innerText = step.title;
+          document.getElementById("tut-text").innerText = step.text;
+
+          document
+            .querySelectorAll(".tutorial-highlight")
+            .forEach((el) => el.classList.remove("tutorial-highlight"));
+
+          if (step.elementId) {
+            document
+              .getElementById(step.elementId)
+              .classList.add("tutorial-highlight");
+          }
+        }
+
+        nextTutorialStep() {
+          this.tutorialStep++;
+          if (this.tutorialStep > 5) {
+            // Fim do tutorial
+            document.getElementById("tutorial-backdrop").style.display = "none";
+            document.getElementById("tutorial-dialog").style.display = "none";
+            document
+              .querySelectorAll(".tutorial-highlight")
+              .forEach((el) => el.classList.remove("tutorial-highlight"));
+
+            this.isTutorialActive = false;
+            this.isPaused = false;
+            this.lastTime = performance.now();
+          } else {
+            this.showTutorialStep();
+          }
+        }
+
+        // ------------------------------------
+
+        saveGame(isAuto = false) {
+          const saveData = {
+            state: this.state,
+            upgrades: this.upgrades,
+          };
+          localStorage.setItem("factoryIdleSave", JSON.stringify(saveData));
+
+          if (!isAuto) {
+            this.createFloatingText("Jogo Guardado!", 100, 50);
+          }
+        }
+
+        loadGame() {
+          const saved = localStorage.getItem("factoryIdleSave");
+          if (saved) {
+            try {
+              const data = JSON.parse(saved);
+              this.state = { ...this.state, ...data.state };
+              this.upgrades = { ...this.upgrades, ...data.upgrades };
+            } catch (e) {
+              console.error("Erro ao carregar save", e);
+            }
+          }
+        }
+
+        promptRestart() {
+          if (this.isGameOver) {
+            this.restartGame();
+            return;
+          }
+
+          this.wasPausedBeforePrompt = this.isPaused;
+          if (!this.isPaused) this.togglePause();
+          document.getElementById("restart-overlay").style.display = "flex";
+        }
+
+        cancelRestart() {
+          document.getElementById("restart-overlay").style.display = "none";
+          if (!this.wasPausedBeforePrompt) this.togglePause();
+        }
+
+        confirmRestart() {
+          this.restartGame();
+        }
+
+        restartGame() {
+          localStorage.removeItem("factoryIdleSave");
+          location.reload(); // Recarrega para voltar ao menu principal limpo
+        }
+
+        triggerGameOver() {
+          this.isGameOver = true;
+          document.getElementById("game-over-overlay").style.display = "flex";
+          audio.playGameOver();
+        }
+
+        togglePause() {
+          if (this.isGameOver || this.isTutorialActive) return; // Bloqueia se o tutorial está rodando
+
+          this.isPaused = !this.isPaused;
+          const btn = document.getElementById("btn-pause");
+          const overlay = document.getElementById("pause-overlay");
+
+          if (this.isPaused) {
+            btn.innerText = "▶️ Retomar";
+            overlay.style.display = "flex";
+            if (audio.enabled) audio.bgm.pause();
+          } else {
+            btn.innerText = "⏸️ Pausa";
+            overlay.style.display = "none";
+            this.lastTime = performance.now();
+            if (audio.enabled) audio.bgm.play().catch((e) => console.log(e));
+          }
+        }
+
+        initLayout() {
+          const W = canvas.width;
+          const H = canvas.height;
+
+          this.belt1StartX = -50;
+          this.belt1EndX = W * 0.55;
+          this.belt1Y = H * 0.35;
+          this.belt1 = new ConveyorBelt(
+            this.belt1StartX,
+            this.belt1Y,
+            this.belt1EndX,
+            this.belt1Y,
+          );
+
+          this.processorX = W * 0.35;
+
+          this.belt2StartX = W * 0.45;
+          this.belt2EndX = W * 0.8;
+          this.belt2Y = H * 0.7;
+          this.belt2 = new ConveyorBelt(
+            this.belt2StartX,
+            this.belt2Y,
+            this.belt2EndX,
+            this.belt2Y,
+          );
+
+          this.updateClaws();
+        }
+
+        updateClaws() {
+          while (this.claws.length < this.state.clawsCount) {
+            let offsetX = this.claws.length * 40;
+            let baseX = this.belt1EndX + 60 + offsetX;
+            let baseY = this.belt1Y - 150;
+            this.claws.push(new Claw(baseX, baseY));
+          }
+        }
+
+        getUpgradeCost(id) {
+          const upg = this.upgrades[id];
+          return Math.floor(upg.baseCost * Math.pow(upg.mult, upg.level - 1));
+        }
+
+        calculateMaintenance() {
+          const baseCost =
+            this.upgrades.beltSpeed.level +
+            this.upgrades.clawSpeed.level +
+            this.upgrades.clawCount.level * 3 +
+            this.upgrades.spawnRate.level;
+          return Math.max(1, Math.ceil(baseCost / 2));
+        }
+
+        buyUpgrade(id) {
+          if (this.isGameOver || this.isTutorialActive) return; // Proteção extra para o tutorial
+
+          const cost = this.getUpgradeCost(id);
+          if (this.state.money >= cost) {
+            this.state.money -= cost;
+            this.upgrades[id].level++;
+
+            switch (id) {
+              case "beltSpeed":
+                this.state.beltSpeed += 30;
+                break;
+              case "clawSpeed":
+                this.state.clawSpeed += 80;
+                break;
+              case "clawCount":
+                this.state.clawsCount++;
+                this.updateClaws();
+                break;
+              case "spawnRate":
+                this.state.spawnRate = Math.max(
+                  300,
+                  this.state.spawnRate * 0.8,
+                );
+                break;
+            }
+
+            this.updateUI();
+            this.saveGame(true);
+          }
+        }
+
+        sellItems() {
+          if (this.isGameOver || this.isTutorialActive) return;
+
+          if (this.state.accumulatedCount > 0) {
+            const earnings = this.state.accumulatedValue;
+            this.state.money += earnings;
+            this.state.totalSold += this.state.accumulatedCount;
+
+            this.state.accumulatedCount = 0;
+            this.state.accumulatedValue = 0;
+
+            audio.playSell();
+            this.createFloatingText(
+              `+ R$ ${earnings}`,
+              window.innerWidth - 150,
+              window.innerHeight - 100,
+            );
+
+            this.updateUI();
+            this.saveGame(true);
+          }
+        }
+
+        createFloatingText(text, x, y, isDanger = false) {
+          const el = document.createElement("div");
+          el.className = "floating-text";
+          el.innerText = text;
+          el.style.left = x + "px";
+          el.style.top = y + "px";
+          if (isDanger) el.style.color = "#E53E3E";
+          document.body.appendChild(el);
+          setTimeout(() => {
+            el.remove();
+          }, 1000);
+        }
+
+        updateUI() {
+          const moneyDisplay = document.getElementById("money-display");
+          moneyDisplay.innerText = `R$ ${Math.floor(this.state.money)}`;
+
+          if (this.state.money < 0) {
+            moneyDisplay.style.color = "#E53E3E";
+          } else {
+            moneyDisplay.style.color = "#2F855A";
+          }
+
+          document.getElementById("maint-display").innerText =
+            `-R$ ${this.calculateMaintenance()}/s`;
+          document.getElementById("accumulated-display").innerText =
+            this.state.accumulatedCount;
+          document.getElementById("accumulated-val-display").innerText =
+            this.state.accumulatedValue;
+          document.getElementById("sold-display").innerText =
+            this.state.totalSold;
+          document.getElementById("spawn-display").innerText =
+            (1000 / this.state.spawnRate).toFixed(1) + "/s";
+          document.getElementById("claws-display").innerText =
+            this.state.clawsCount;
+
+          for (let key in this.upgrades) {
+            const upg = this.upgrades[key];
+            const cost = this.getUpgradeCost(key);
+            const btn = document.getElementById(`btn-upg-${upg.elId}`);
+
+            document.getElementById(`cost-${upg.elId}`).innerText =
+              `R$ ${cost}`;
+            document.getElementById(`lvl-${upg.elId}`).innerText =
+              `Lv ${upg.level}`;
+
+            btn.disabled = this.state.money < cost;
+
+            let prog = Math.min(100, upg.level * 10);
+            document.getElementById(`prog-${upg.elId}`).style.width =
+              `${prog}%`;
+          }
+        }
+
+        spawnItem() {
+          this.state.money -= CONFIG.rawMaterialCost;
+          this.items.push(new Item(this.belt1StartX, this.belt1Y));
+          this.updateUI();
+        }
+
+        loop(timestamp) {
+          if (!this.lastTime) this.lastTime = timestamp;
+          const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+          this.lastTime = timestamp;
+
+          // Não atualiza física se estiver pausado ou no tutorial
+          if (!this.isPaused && !this.isGameOver && !this.isTutorialActive) {
+            this.update(dt);
+          }
+
+          // Sempre desenha para que o fundo continue visível durante os menus
+          this.draw();
+          requestAnimationFrame((t) => this.loop(t));
+        }
+
+        update(dt) {
+          this.maintenanceTimer += dt;
+          if (this.maintenanceTimer >= 1.0) {
+            this.state.money -= this.calculateMaintenance();
+            this.maintenanceTimer -= 1.0;
+            this.updateUI();
+
+            if (this.state.money <= CONFIG.bankruptcyLimit) {
+              this.triggerGameOver();
+              return;
+            }
+          }
+
+          this.spawnTimer += dt * 1000;
+          if (this.spawnTimer >= this.state.spawnRate) {
+            this.spawnTimer = 0;
+            this.spawnItem();
+          }
+
+          this.smokeTimer += dt;
+          if (this.smokeTimer > 0.2) {
+            this.smokes.push(
+              new Smoke(
+                this.processorX,
+                this.belt1Y - 30,
+                this.processorBroken,
+              ),
+            );
+            this.smokeTimer = 0;
+          }
+
+          for (let i = 0; i < this.items.length; i++) {
+            let item = this.items[i];
+
+            let canMove = true;
+            let itemAhead = this.items.find(
+              (other) =>
+                other !== item &&
+                other.state === item.state &&
+                other.x > item.x &&
+                other.x - item.x < CONFIG.itemSize + 5,
+            );
+
+            if (itemAhead) canMove = false;
+
+            if (item.state === "BELT_1") {
+              if (
+                this.processorBroken &&
+                item.x >= this.processorX - 20 &&
+                item.x <= this.processorX
+              ) {
+                canMove = false;
+              }
+
+              if (canMove) item.x += this.state.beltSpeed * dt;
+
+              if (item.x > this.processorX && !item.processed) {
+                if (!this.processorBroken) {
+                  item.processed = true;
+                  item.color = item.oreData.colorProc;
+
+                  audio.playSpark();
+                  for (let j = 0; j < 8; j++)
+                    this.sparks.push(new Spark(item.x, item.y));
+
+                  if (Math.random() < CONFIG.breakChance) {
+                    this.processorBroken = true;
+                  }
+                }
+              }
+
+              if (item.x >= this.belt1EndX - 20) {
+                item.state = "WAITING";
+              }
+            } else if (item.state === "BELT_2") {
+              if (canMove) item.x += this.state.beltSpeed * dt;
+
+              if (item.x >= this.belt2EndX) {
+                item.state = "ACCUMULATED";
+                this.state.accumulatedCount++;
+                this.state.accumulatedValue += item.value;
+                this.updateUI();
+              }
+            }
+          }
+
+          this.items = this.items.filter((i) => i.state !== "ACCUMULATED");
+
+          this.claws.forEach((claw) => {
+            claw.update(dt, {
+              speed: this.state.clawSpeed,
+              belt1EndX: this.belt1EndX,
+              belt1Y: this.belt1Y,
+              belt2StartX: this.belt2StartX,
+              belt2Y: this.belt2Y,
+              items: this.items,
+              breakChance: CONFIG.breakChance,
+            });
+          });
+
+          this.sparks.forEach((s) => s.update(dt));
+          this.sparks = this.sparks.filter((s) => s.life > 0);
+
+          this.smokes.forEach((s) => s.update(dt));
+          this.smokes = this.smokes.filter((s) => s.life > 0);
+        }
+
+        drawRepairIcon(ctx, x, y) {
+          const time = Date.now() / 150;
+          const offsetY = Math.sin(time) * 5;
+
+          ctx.save();
+          ctx.translate(x, y + offsetY);
+
+          ctx.fillStyle = "#E53E3E";
+          ctx.beginPath();
+          ctx.arc(0, 0, 22, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "24px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("⚙️", 0, 2);
+
+          ctx.fillStyle = "#E53E3E";
+          ctx.font = "bold 15px Arial";
+          ctx.shadowColor = "white";
+          ctx.shadowBlur = 4;
+          ctx.fillText(`R$ ${CONFIG.repairCost}`, 0, 35);
+
+          ctx.restore();
+        }
+
+        drawProcessor(ctx) {
+          ctx.save();
+          ctx.translate(this.processorX, this.belt1Y);
+
+          ctx.fillStyle = this.processorBroken ? "#4A5568" : "#718096";
+          ctx.fillRect(-20, -CONFIG.itemSize, 40, CONFIG.itemSize * 2);
+
+          ctx.fillStyle = this.processorBroken ? "#2D3748" : "#4A5568";
+          ctx.fillRect(-10, -CONFIG.itemSize - 30, 20, 30);
+
+          ctx.fillStyle = this.processorBroken ? "#2D3748" : "#4A5568";
+          ctx.fillRect(-10, -CONFIG.itemSize - 10, 20, 10);
+          ctx.fillRect(-10, CONFIG.itemSize, 20, 10);
+
+          ctx.fillStyle = "#CBD5E0";
+          ctx.beginPath();
+          ctx.arc(0, -CONFIG.itemSize / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(0, CONFIG.itemSize / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+
+        draw() {
+          ctx.fillStyle = "#E0E6ED";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          this.belt1.draw(ctx, this.state.beltSpeed, 0.016);
+          this.belt2.draw(ctx, this.state.beltSpeed, 0.016);
+
+          this.drawProcessor(ctx);
+
+          this.smokes.forEach((s) => s.draw(ctx));
+
+          this.items
+            .filter((i) => i.state !== "IN_CLAW")
+            .forEach((i) => i.draw(ctx));
+          this.claws.forEach((claw) => claw.draw(ctx));
+          this.items
+            .filter((i) => i.state === "IN_CLAW")
+            .forEach((i) => i.draw(ctx));
+
+          this.sparks.forEach((s) => s.draw(ctx));
+
+          if (this.processorBroken) {
+            this.drawRepairIcon(ctx, this.processorX, this.belt1Y - 60);
+          }
+
+          this.claws.forEach((claw) => {
+            if (claw.isBroken) {
+              this.drawRepairIcon(ctx, claw.baseX, claw.baseY - 50);
+            }
+          });
+        }
+      }
+
+      const game = new GameManager();
+
+      window.addEventListener("resize", () => {
+        game.initLayout();
+      });
+    </script>
+  </body>
+</html>
